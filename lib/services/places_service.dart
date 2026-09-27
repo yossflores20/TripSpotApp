@@ -101,6 +101,9 @@ out center 60;
       case PlaceCategory.turistico:
         parts.add('Sitio turístico recomendado para visitar.');
         break;
+        case PlaceCategory.evento:
+        parts.add('!No te pierdas el siguiente evento mientras visitas ixmiquilpan!');
+        break;
     }
     final openingHours = tags['opening_hours'] as String?;
     if (openingHours != null && openingHours.isNotEmpty) {
