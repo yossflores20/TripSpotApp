@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
+import 'admin_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,26 +19,46 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      await AppServices.instance.auth.login(
-        email: _emailCtrl.text,
-        password: _passCtrl.text,
-      );
-      if (!mounted) return;
+  if (!_formKey.currentState!.validate()) return;
+
+  setState(() {
+    _loading = true;
+    _error = null;
+  });
+
+  try {
+    final user = await AppServices.instance.auth.login(
+      email: _emailCtrl.text,
+      password: _passCtrl.text,
+    );
+
+    if (!mounted) return;
+
+    if (user.isAdmin) {
+  Navigator.of(context).pushReplacement(
+    MaterialPageRoute(
+      builder: (_) => AdminHomeScreen(
+        onChanged: () {},
+      ),
+    ),
+  );
+} else {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(
+          builder: (_) => const HomeScreen(),
+        ),
       );
-    } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    }
+  } catch (e) {
+    setState(
+      () => _error = e.toString().replaceFirst('Exception: ', ''),
+    );
+  } finally {
+    if (mounted) {
+      setState(() => _loading = false);
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _loading ? null : _submit,
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
-                    backgroundColor: const Color(0xFF3AA6B9),
+                    backgroundColor: const Color.fromARGB(255, 58, 64, 185),
                   ),
                   child: _loading
                       ? const SizedBox(
