@@ -5,7 +5,8 @@ enum PlaceCategory {
   parque('leisure', 'park', 'Parques', '🌳'),
   plaza('shop', 'mall', 'Plazas', '🏬'),
   monumento('historic', 'monument', 'Monumentos', '🗿'),
-  turistico('tourism', 'attraction', 'Sitios turísticos', '📸');
+  turistico('tourism', 'attraction', 'Sitios turísticos', '📸'),
+  evento('amenity','events_venue','Eventos','🎉');
 
   final String osmKey;
   final String osmValue;
