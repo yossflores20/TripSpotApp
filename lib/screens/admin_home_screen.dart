@@ -17,7 +17,7 @@ class AdminHomeScreen extends StatelessWidget {
         const SizedBox(height: 20),
         Card(
           child: ListTile(
-            leading: const Icon(Icons.people, color: Color(0xFF3AA6B9)),
+            leading: const Icon(Icons.people, color: Color.fromARGB(255, 58, 71, 185)),
             title: const Text('Usuarios registrados'),
             subtitle: const Text('Ver quién se ha registrado en este dispositivo'),
             trailing: const Icon(Icons.chevron_right),
