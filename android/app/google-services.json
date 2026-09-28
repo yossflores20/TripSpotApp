@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "839285830998",
+    "project_id": "tripspot-29371",
+    "storage_bucket": "tripspot-29371.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:839285830998:android:2f360dc0cb61929419d2f7",
+        "android_client_info": {
+          "package_name": "com.example.tripspot_cloud"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNwlwlu4MnWAD-S4O3iIUIKj38bh17wv8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -7,6 +7,8 @@ import 'services/places_service.dart';
 import 'services/favorites_service.dart';
 import 'services/featured_places_service.dart';
 import 'screens/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 class AppServices {
   AppServices._();
@@ -21,7 +23,13 @@ class AppServices {
       FeaturedPlacesService();
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const TripSpotApp());
 }
 

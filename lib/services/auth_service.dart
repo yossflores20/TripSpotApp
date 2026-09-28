@@ -1,18 +1,11 @@
-import 'dart:convert';
-
-import 'package:crypto/crypto.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/user.dart';
 
-
 class AuthService {
-  static const _usersKey = 'tripspot_users';
-  static const _sessionKey = 'tripspot_session_email';
-
-  String _hash(String value) {
-    return sha256.convert(utf8.encode(value)).toString();
-  }
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   bool _isValidEmail(String email) {
     final regex = RegExp(
@@ -22,93 +15,34 @@ class AuthService {
     return regex.hasMatch(email.trim());
   }
 
-  Future<List<AppUser>> _loadUsers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_usersKey);
-
-    if (raw == null) {
-      return [];
-    }
-
-    final list = jsonDecode(raw) as List<dynamic>;
-
-    return list
-        .map(
-          (e) => AppUser.fromJson(
-            e as Map<String, dynamic>,
-          ),
-        )
-        .toList();
-  }
-
-  Future<void> _saveUsers(List<AppUser> users) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setString(
-      _usersKey,
-      jsonEncode(
-        users.map((u) => u.toJson()).toList(),
-      ),
+  /// Convierte un documento de Firestore en AppUser.
+  AppUser _userFromData(Map<String, dynamic> data) {
+    return AppUser(
+      name: data['name'] as String? ?? '',
+      email: data['email'] as String? ?? '',
+      passwordHash: '',
+      isAdmin: data['role'] == 'admin',
     );
-  }
-
-Future<void> ensureAdmin({
-  required String name,
-  required String email,
-  required String password,
-}) async {
-  final users = await _loadUsers();
-  final normalizedEmail = email.trim().toLowerCase();
-
-  final index = users.indexWhere(
-    (u) => u.email == normalizedEmail,
-  );
-
-  final admin = AppUser(
-    name: name.trim(),
-    email: normalizedEmail,
-    passwordHash: _hash(password),
-    isAdmin: true,
-  );
-
-  if (index >= 0) {
-    users[index] = admin;
-  } else {
-    users.add(admin);
-  }
-
-  await _saveUsers(users);
-}
-
-  /// Devuelve los usuarios registrados.
-  /// Se utiliza en el panel administrativo.
-  Future<List<AppUser>> getAllUsers() {
-    return _loadUsers();
   }
 
   /// Registra un usuario normal.
   ///
-  /// El registro público nunca puede crear administradores.
+  /// Todos los usuarios creados desde la pantalla de registro
+  /// tendrán el rol "user".
   Future<AppUser> register({
     required String name,
     required String email,
     required String password,
   }) async {
-    final users = await _loadUsers();
-
     final normalizedName = name.trim();
     final normalizedEmail = email.trim().toLowerCase();
 
     if (normalizedName.length < 3) {
-      throw Exception(
-        'Ingresa un nombre válido.',
-      );
+      throw Exception('Ingresa un nombre válido.');
     }
 
     if (!_isValidEmail(normalizedEmail)) {
-      throw Exception(
-        'Ingresa un correo electrónico válido.',
-      );
+      throw Exception('Ingresa un correo electrónico válido.');
     }
 
     if (password.length < 8) {
@@ -117,46 +51,100 @@ Future<void> ensureAdmin({
       );
     }
 
-    if (users.any(
-      (u) => u.email == normalizedEmail,
-    )) {
+    try {
+      final credential =
+          await _auth.createUserWithEmailAndPassword(
+        email: normalizedEmail,
+        password: password,
+      );
+
+      final firebaseUser = credential.user;
+
+      if (firebaseUser == null) {
+        throw Exception('No se pudo crear el usuario.');
+      }
+
+      // Guardamos únicamente información del perfil.
+      // La contraseña NO se guarda en Firestore.
+      await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .set({
+        'name': normalizedName,
+        'email': normalizedEmail,
+        'role': 'user',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      final newUser = AppUser(
+        name: normalizedName,
+        email: normalizedEmail,
+        passwordHash: '',
+        isAdmin: false,
+      );
+
+      // Firebase inicia sesión automáticamente después
+      // del registro. La cerramos porque queremos que
+      // TripSpot regrese al Login.
+      await _auth.signOut();
+
+      return newUser;
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'email-already-in-use':
+          throw Exception(
+            'Ya existe una cuenta con ese correo.',
+          );
+
+        case 'invalid-email':
+          throw Exception(
+            'El correo electrónico no es válido.',
+          );
+
+        case 'weak-password':
+          throw Exception(
+            'La contraseña es demasiado débil.',
+          );
+
+        case 'network-request-failed':
+          throw Exception(
+            'No se pudo conectar con Firebase. Revisa tu conexión a internet.',
+          );
+
+        default:
+          throw Exception(
+            e.message ?? 'No se pudo crear la cuenta.',
+          );
+      }
+    } on FirebaseException catch (e) {
+      // Si Authentication creó la cuenta pero Firestore falló,
+      // intentamos eliminar esa cuenta para evitar un registro
+      // incompleto.
+      final firebaseUser = _auth.currentUser;
+
+      if (firebaseUser != null) {
+        try {
+          await firebaseUser.delete();
+        } catch (_) {}
+      }
+
+      await _auth.signOut();
+
       throw Exception(
-        'Ya existe una cuenta con ese correo.',
+        e.message ?? 'No se pudieron guardar los datos del usuario.',
       );
     }
-
-    final newUser = AppUser(
-      name: normalizedName,
-      email: normalizedEmail,
-      passwordHash: _hash(password),
-
-      // Todo registro público es usuario normal.
-      isAdmin: false,
-    );
-
-    users.add(newUser);
-
-    await _saveUsers(users);
-
-    // No iniciamos sesión automáticamente.
-    // El usuario debe regresar al Login.
-    return newUser;
   }
 
-  /// Inicia sesión y devuelve el usuario autenticado.
+  /// Inicia sesión con Firebase Authentication.
   Future<AppUser> login({
     required String email,
     required String password,
   }) async {
-    final users = await _loadUsers();
-
-    final normalizedEmail =
-        email.trim().toLowerCase();
+    final normalizedEmail = email.trim().toLowerCase();
 
     if (!_isValidEmail(normalizedEmail)) {
-      throw Exception(
-        'Correo electrónico inválido.',
-      );
+      throw Exception('Correo electrónico inválido.');
     }
 
     if (password.length < 8) {
@@ -165,106 +153,113 @@ Future<void> ensureAdmin({
       );
     }
 
-    final passwordHash = _hash(password);
-
-    final match = users.where(
-      (u) =>
-          u.email == normalizedEmail &&
-          u.passwordHash == passwordHash,
-    );
-
-    if (match.isEmpty) {
-      throw Exception(
-        'Correo o contraseña incorrectos.',
+    try {
+      final credential =
+          await _auth.signInWithEmailAndPassword(
+        email: normalizedEmail,
+        password: password,
       );
+
+      final firebaseUser = credential.user;
+
+      if (firebaseUser == null) {
+        throw Exception('No se pudo iniciar sesión.');
+      }
+
+      final document = await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .get();
+
+      if (!document.exists || document.data() == null) {
+        await _auth.signOut();
+
+        throw Exception(
+          'No se encontró el perfil del usuario.',
+        );
+      }
+
+      return _userFromData(document.data()!);
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'invalid-credential':
+        case 'user-not-found':
+        case 'wrong-password':
+          throw Exception(
+            'Correo o contraseña incorrectos.',
+          );
+
+        case 'invalid-email':
+          throw Exception(
+            'Correo electrónico inválido.',
+          );
+
+        case 'user-disabled':
+          throw Exception(
+            'Esta cuenta ha sido deshabilitada.',
+          );
+
+        case 'network-request-failed':
+          throw Exception(
+            'No se pudo conectar con Firebase. Revisa tu conexión a internet.',
+          );
+
+        default:
+          throw Exception(
+            e.message ?? 'No se pudo iniciar sesión.',
+          );
+      }
     }
-
-    final user = match.first;
-
-    final prefs =
-        await SharedPreferences.getInstance();
-
-    await prefs.setString(
-      _sessionKey,
-      normalizedEmail,
-    );
-
-    return user;
   }
 
   /// Cierra la sesión actual.
   Future<void> logout() async {
-    final prefs =
-        await SharedPreferences.getInstance();
-
-    await prefs.remove(_sessionKey);
+    await _auth.signOut();
   }
 
-  /// Obtiene el usuario que inició sesión.
+  /// Obtiene el usuario autenticado actualmente.
   Future<AppUser?> currentUser() async {
-    final prefs =
-        await SharedPreferences.getInstance();
+    final firebaseUser = _auth.currentUser;
 
-    final email =
-        prefs.getString(_sessionKey);
-
-    if (email == null) {
+    if (firebaseUser == null) {
       return null;
     }
 
-    final users = await _loadUsers();
+    final document = await _firestore
+        .collection('users')
+        .doc(firebaseUser.uid)
+        .get();
 
-    final match = users.where(
-      (u) => u.email == email,
-    );
+    if (!document.exists || document.data() == null) {
+      return null;
+    }
 
-    return match.isEmpty
-        ? null
-        : match.first;
+    return _userFromData(document.data()!);
   }
 
-  /// Permite actualizar correo y/o contraseña.
+  /// Actualiza el correo y/o contraseña del usuario.
   Future<AppUser> updateProfile({
     required String currentEmail,
     String? newEmail,
     String? newPassword,
   }) async {
-    final users = await _loadUsers();
+    final firebaseUser = _auth.currentUser;
 
-    final idx = users.indexWhere(
-      (u) => u.email == currentEmail,
-    );
-
-    if (idx == -1) {
+    if (firebaseUser == null) {
       throw Exception(
-        'Usuario no encontrado.',
+        'No hay una sesión iniciada.',
       );
     }
 
     String? normalizedNewEmail;
 
-    if (newEmail != null &&
-        newEmail.trim().isNotEmpty) {
+    if (newEmail != null && newEmail.trim().isNotEmpty) {
       normalizedNewEmail =
           newEmail.trim().toLowerCase();
 
-      if (!_isValidEmail(
-        normalizedNewEmail,
-      )) {
+      if (!_isValidEmail(normalizedNewEmail)) {
         throw Exception(
           'Ingresa un correo electrónico válido.',
-        );
-      }
-
-      if (normalizedNewEmail !=
-              currentEmail &&
-          users.any(
-            (u) =>
-                u.email ==
-                normalizedNewEmail,
-          )) {
-        throw Exception(
-          'Ese correo ya está en uso por otra cuenta.',
         );
       }
     }
@@ -277,30 +272,61 @@ Future<void> ensureAdmin({
       );
     }
 
-    final updated =
-        users[idx].copyWith(
-      email: normalizedNewEmail,
-      passwordHash:
-          newPassword != null &&
-                  newPassword.isNotEmpty
-              ? _hash(newPassword)
-              : null,
-    );
+    try {
+      // Firebase puede requerir una verificación antes
+      // de aplicar un cambio de correo.
+      if (normalizedNewEmail != null &&
+          normalizedNewEmail != firebaseUser.email) {
+        await firebaseUser.verifyBeforeUpdateEmail(
+          normalizedNewEmail,
+        );
+      }
 
-    users[idx] = updated;
+      if (newPassword != null &&
+          newPassword.isNotEmpty) {
+        await firebaseUser.updatePassword(newPassword);
+      }
 
-    await _saveUsers(users);
+      final document = await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .get();
 
-    if (normalizedNewEmail != null) {
-      final prefs =
-          await SharedPreferences.getInstance();
+      if (!document.exists || document.data() == null) {
+        throw Exception(
+          'No se encontró el perfil del usuario.',
+        );
+      }
 
-      await prefs.setString(
-        _sessionKey,
-        normalizedNewEmail,
+      return _userFromData(document.data()!);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw Exception(
+          'Por seguridad, vuelve a iniciar sesión antes de cambiar tus datos.',
+        );
+      }
+
+      if (e.code == 'email-already-in-use') {
+        throw Exception(
+          'Ese correo ya está en uso por otra cuenta.',
+        );
+      }
+
+      throw Exception(
+        e.message ?? 'No se pudo actualizar el perfil.',
       );
     }
+  }
 
-    return updated;
+  /// Devuelve los usuarios registrados.
+  ///
+  /// Esta función será utilizada por el administrador.
+  Future<List<AppUser>> getAllUsers() async {
+    final snapshot =
+        await _firestore.collection('users').get();
+
+    return snapshot.docs
+        .map((doc) => _userFromData(doc.data()))
+        .toList();
   }
 }
