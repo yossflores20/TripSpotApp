@@ -4,7 +4,7 @@ import 'services/location_service.dart';
 import 'services/places_service.dart';
 import 'services/favorites_service.dart';
 import 'services/featured_places_service.dart';
-import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
 
 class AppServices {
   AppServices._();
@@ -31,10 +31,10 @@ class TripSpotApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF3AA6B9),
+        colorSchemeSeed: const Color.fromARGB(255, 47, 58, 148),
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const SplashScreen(),
+      home: const LoginScreen(),
     );
   }
 }
