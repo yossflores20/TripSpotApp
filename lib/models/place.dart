@@ -24,6 +24,7 @@ class Place {
   final PlaceCategory category;
   final String? address;
   final String? description;
+  final String? imagePath;
   final bool isFeatured;
 
   Place({
@@ -34,6 +35,7 @@ class Place {
     required this.category,
     this.address,
     this.description,
+    this.imagePath,
     this.isFeatured = false,
   });
 
@@ -45,6 +47,7 @@ class Place {
         'category': category.name,
         'address': address,
         'description': description,
+        'imagePath': imagePath,
         'isFeatured': isFeatured,
       };
 
@@ -59,6 +62,7 @@ class Place {
         ),
         address: json['address'] as String?,
         description: json['description'] as String?,
+        imagePath: json['imagePath'] as String?,
         isFeatured: json['isFeatured'] as bool? ?? false,
       );
 }
