@@ -12,7 +12,20 @@
           "package_name": "com.example.tripspot_cloud"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "839285830998-jovl9vghl0lnltv0b1rh407l3pu21p1h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tripspot_cloud",
+            "certificate_hash": "7f8452b552cbe3b4f023406f6d07c3061c3c3d5f"
+          }
+        },
+        {
+          "client_id": "839285830998-40kuhg7s6rsrqllsihfm9dq7ton3j0qc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBNwlwlu4MnWAD-S4O3iIUIKj38bh17wv8"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "839285830998-40kuhg7s6rsrqllsihfm9dq7ton3j0qc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "839285830998-1r469vfml0o3asb0paqvuqb7ih00moa6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tripspotCloud"
+              }
+            }
+          ]
         }
       }
     }

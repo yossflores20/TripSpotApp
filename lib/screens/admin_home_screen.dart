@@ -4,6 +4,7 @@ import '../main.dart';
 import 'admin_users_screen.dart';
 import 'admin_featured_places_screen.dart';
 import 'login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   final VoidCallback onChanged;
@@ -20,46 +21,83 @@ class AdminHomeScreen extends StatelessWidget {
     185,
   );
 
-  Future<void> _logout(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Cerrar sesión'),
-          content: const Text(
-            '¿Deseas cerrar la sesión del administrador?',
+  
+Future<void> _logout(BuildContext context) async {
+  // CONFIRMAR CIERRE DE SESIÓN
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text(
+          '¿Deseas cerrar la sesión del administrador?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(false);
+            },
+            child: const Text('Cancelar'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false);
-              },
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context, true);
-              },
-              child: const Text('Cerrar sesión'),
-            ),
-          ],
-        );
-      },
-    );
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(true);
+            },
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      );
+    },
+  );
 
-    if (confirm != true || !context.mounted) return;
+  if (confirm != true || !context.mounted) return;
 
+  try {
+    // CERRAR SESIÓN DE FIREBASE Y GOOGLE
     await AppServices.instance.auth.logout();
+
+    // DESACTIVAR MANTENER SESIÓN INICIADA
+    final preferences =
+        await SharedPreferences.getInstance();
+
+    await preferences.setBool(
+      'tripspot_keep_session',
+      false,
+    );
 
     if (!context.mounted) return;
 
+    // REGRESAR AL LOGIN
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => const LoginScreen(),
       ),
       (route) => false,
     );
+
+    // MOSTRAR CONFIRMACIÓN
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showTripSpotMessage(
+        'Has cerrado sesión correctamente.',
+      );
+    });
+  } catch (e) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'No se pudo cerrar la sesión. '
+          'Inténtalo nuevamente.',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
+}
+
+
+
 
   @override
   Widget build(BuildContext context) {

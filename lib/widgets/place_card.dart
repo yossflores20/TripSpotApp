@@ -192,7 +192,7 @@ class PlaceCard extends StatelessWidget {
 
   Widget _buildPlaceholder() {
     return Container(
-      color: _primaryColor.withOpacity(0.10),
+      color: _primaryColor.withValues(alpha:0.10),
       alignment: Alignment.center,
       child: Text(
         place.category.emoji,

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../main.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';
+import 'admin_home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,38 +14,86 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  static const String _sessionPreferenceKey =
+      'tripspot_keep_session';
+
   @override
   void initState() {
     super.initState();
     _bootstrap();
   }
 
+  // COMPROBAR SI DEBEMOS CONSERVAR LA SESIÓN
   Future<void> _bootstrap() async {
     try {
-      // Cierra cualquier sesión que Firebase haya conservado
-      // de una ejecución anterior de la aplicación.
-      await AppServices.instance.auth.logout();
+      final preferences =
+          await SharedPreferences.getInstance();
+
+      final keepSession =
+          preferences.getBool(_sessionPreferenceKey) ?? false;
+
+      // SI NO SE SELECCIONÓ MANTENER SESIÓN,
+      // CERRAMOS LA SESIÓN GUARDADA POR FIREBASE.
+      if (!keepSession) {
+        await AppServices.instance.auth.logout();
+
+        if (!mounted) return;
+
+        _goToLogin();
+        return;
+      }
+
+      // SI SE SELECCIONÓ MANTENER SESIÓN,
+      // RECUPERAMOS EL PERFIL DEL USUARIO.
+      final user =
+          await AppServices.instance.auth.currentUser();
 
       if (!mounted) return;
 
-      // Siempre enviamos al usuario al inicio de sesión
-      // cuando la aplicación arranca.
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        ),
-      );
+      // NO EXISTE UNA SESIÓN VÁLIDA.
+      if (user == null) {
+        await AppServices.instance.auth.logout();
+
+        if (!mounted) return;
+
+        _goToLogin();
+        return;
+      }
+
+      // REDIRECCIÓN SEGÚN EL ROL
+      if (user.isAdmin) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => AdminHomeScreen(
+              onChanged: () {},
+            ),
+          ),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const HomeScreen(),
+          ),
+        );
+      }
     } catch (e) {
-      // Si ocurre algún problema al cerrar la sesión,
-      // igualmente mostramos la pantalla de inicio de sesión.
+      // SI OCURRE UN ERROR, NO PERMITIMOS EL
+      // ACCESO AUTOMÁTICO SIN VERIFICAR EL PERFIL.
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        ),
-      );
+      _goToLogin();
     }
+  }
+
+  // NAVEGAR A LA PANTALLA DE INICIO DE SESIÓN
+  void _goToLogin() {
+    if (!mounted) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(),
+      ),
+    );
   }
 
   @override

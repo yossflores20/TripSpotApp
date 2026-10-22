@@ -43,3 +43,18 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Claves privadas y credenciales
+*.jks
+*.keystore
+key.properties
+*service-account*.json
+*firebase-adminsdk*.json
+
+# Archivos de configuración local
+local.properties

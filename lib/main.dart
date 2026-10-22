@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
 
+import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 import 'services/places_service.dart';
 import 'services/favorites_service.dart';
 import 'services/featured_places_service.dart';
 import 'screens/splash_screen.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
 class AppServices {
   AppServices._();
@@ -33,6 +33,23 @@ Future<void> main() async {
   runApp(const TripSpotApp());
 }
 
+final GlobalKey<ScaffoldMessengerState> tripSpotMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
+void showTripSpotMessage(String message) {
+  final messenger = tripSpotMessengerKey.currentState;
+
+  messenger?.hideCurrentSnackBar();
+
+  messenger?.showSnackBar(
+    SnackBar(
+      content: Text(message),
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+
 class TripSpotApp extends StatelessWidget {
   const TripSpotApp({super.key});
 
@@ -47,12 +64,12 @@ class TripSpotApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'TripSpot',
+      scaffoldMessengerKey: tripSpotMessengerKey,
       debugShowCheckedModeBanner: false,
 
       theme: ThemeData(
         useMaterial3: true,
 
-        // TIPOGRAFÍA GLOBAL
         textTheme: GoogleFonts.poppinsTextTheme(),
 
         colorScheme: ColorScheme.fromSeed(
@@ -62,7 +79,6 @@ class TripSpotApp extends StatelessWidget {
 
         scaffoldBackgroundColor: const Color(0xFFF6F7FB),
 
-        // CAMPOS DE TEXTO
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
@@ -84,7 +100,6 @@ class TripSpotApp extends StatelessWidget {
           ),
         ),
 
-        // BOTONES
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: primaryColor,
@@ -95,7 +110,6 @@ class TripSpotApp extends StatelessWidget {
           ),
         ),
 
-        // APPBAR
         appBarTheme: AppBarTheme(
           backgroundColor: const Color(0xFFF6F7FB),
           elevation: 0,

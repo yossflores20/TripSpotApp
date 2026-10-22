@@ -1,5 +1,6 @@
+
 name: tripspot_cloud
-description: TripSpot (versión individual) - app funcional local, sin servicios externos por ahora.
+description: TripSpot (versión individual) - aplicación móvil con Firebase.
 version: 1.0.0+1
 publish_to: 'none'
 
@@ -9,22 +10,37 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # Interfaz
   cupertino_icons: ^1.0.6
+  google_fonts: ^6.2.1
+
+  # Almacenamiento local
   shared_preferences: ^2.2.2
+
+  # Ubicación y mapas
   geolocator: ^11.0.0
-  http: ^1.2.0
-  crypto: ^3.0.3
   flutter_map: ^6.1.0
   latlong2: ^0.9.1
+
+  # Conexiones y utilidades
+  http: ^1.2.0
+  crypto: ^3.0.3
   image_picker: ^1.1.2
-  google_fonts: ^6.2.1
+
+  # Firebase
   firebase_core: ^4.15.0
   firebase_auth: ^6.7.0
   cloud_firestore: ^6.10.0
 
+  # Inicio de sesión con Google
+  google_sign_in: ^7.2.0
+
 dev_dependencies:
+  flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
 
 flutter:
   uses-material-design: true
+

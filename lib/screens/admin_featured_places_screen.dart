@@ -16,12 +16,7 @@ class AdminFeaturedPlacesScreen extends StatefulWidget {
 
 class _AdminFeaturedPlacesScreenState
     extends State<AdminFeaturedPlacesScreen> {
-  static const Color _primaryColor = Color.fromARGB(
-    255,
-    58,
-    64,
-    185,
-  );
+  static const Color _primaryColor = Color.fromARGB(255,58,64,185,);
 
   List<Place> _places = [];
   bool _loading = true;
@@ -325,7 +320,7 @@ class _AdminFeaturedPlacesScreenState
                         // CATEGORÍA
                         DropdownButtonFormField<
                             PlaceCategory>(
-                          value: category,
+                          initialValue: category,
                           decoration:
                               const InputDecoration(
                             labelText:
@@ -581,14 +576,71 @@ class _AdminFeaturedPlacesScreenState
                         .featuredPlaces
                         .add(place);
 
-                    if (ctx.mounted) {
-                      Navigator.pop(
-                        ctx,
-                      );
-                    }
+                    
 
-                    await _load();
-                  },
+try {
+  await AppServices.instance.featuredPlaces.add(place);
+
+  if (!mounted || !ctx.mounted) return;
+
+  Navigator.pop(ctx);
+
+  await _load();
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(this.context).showSnackBar(
+    const SnackBar(
+      content: Text(
+        'Lugar destacado registrado correctamente.',
+      ),
+      backgroundColor: Colors.green,
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+} on StateError catch (e) {
+  if (!ctx.mounted) return;
+
+  await showDialog<void>(
+    context: ctx,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange,
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text('Lugar ya registrado'),
+            ),
+          ],
+        ),
+        content: Text(e.message.toString()),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Aceptar'),
+          ),
+        ],
+      );
+    },
+  );
+} catch (e) {
+  if (!ctx.mounted) return;
+
+  ScaffoldMessenger.of(ctx).showSnackBar(
+    const SnackBar(
+      content: Text(
+        'No se pudo guardar el lugar. Inténtalo nuevamente.',
+      ),
+      backgroundColor: Colors.red,
+    ),
+  );
+}},
                   icon: const Icon(
                     Icons.save_outlined,
                   ),
